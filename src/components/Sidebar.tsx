@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 pt-12 md:pt-0">
             <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-app-accent-foreground font-bold text-xl">PS</span>
+              <span className="text-lg">▶️🎵</span>
             </div>
             <h1 className="text-2xl font-bold text-app-text-primary">PlaySong</h1>
           </div>

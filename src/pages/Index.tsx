@@ -136,7 +136,7 @@ const Index = () => {
             <div className="bg-app-surface rounded-2xl p-6 shadow-card">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                  <span className="text-app-accent-foreground font-bold">🎵</span>
+                  <span className="text-sm">▶️🎵</span>
                 </div>
                 <h1 className="text-3xl font-bold text-app-text-primary">PlaySong</h1>
               </div>
