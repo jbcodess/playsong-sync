@@ -14,11 +14,11 @@ const convertYouTubeVideoToTrack = (video: YouTubeVideo) => ({
   artist: video.snippet.channelTitle,
   albumArt: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default.url,
   audioUrl: `https://www.youtube.com/watch?v=${video.id.videoId}`,
-  duration: 0,
-  // Duration will be set when video loads
+  duration: 0, // Duration will be set when video loads
   channelId: video.snippet.channelId,
   videoId: video.id.videoId
 });
+
 const Index = () => {
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,25 +29,25 @@ const Index = () => {
   const [playlist, setPlaylist] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  
   const [favorites, setFavorites] = useLocalStorage<any[]>('playsong-favorites', []);
-  const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{
-    id: string;
-    name: string;
-  }>>('playsong-followed-artists', []);
-  const {
-    toast
-  } = useToast();
+  const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
+  
+  const { toast } = useToast();
   const youtubeService = YouTubeService.getInstance();
 
   // Load trending tracks on component mount
   useEffect(() => {
     loadTrendingTracks();
-
+    
     // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then(() => console.log('Service Worker registered')).catch(err => console.error('Service Worker registration failed:', err));
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('Service Worker registered'))
+        .catch(err => console.error('Service Worker registration failed:', err));
     }
   }, []);
+
   const loadTrendingTracks = async () => {
     try {
       setLoading(true);
@@ -69,15 +69,17 @@ const Index = () => {
       setLoading(false);
     }
   };
+
   const handleTrackSelect = useCallback((track: any) => {
     setCurrentTrack(track);
     setIsPlaying(true);
   }, []);
+
   const handleSearch = async (query: string) => {
     try {
       setLoading(true);
       setActiveSection('search');
-
+      
       // Check if it's a YouTube URL
       const videoId = youtubeService.extractVideoId(query);
       if (videoId) {
@@ -116,8 +118,10 @@ const Index = () => {
       setLoading(false);
     }
   };
+
   const loadMoreResults = async () => {
     if (!nextPageToken) return;
+    
     try {
       setLoading(true);
       // This would need the last search query - we'd need to store it
@@ -128,54 +132,77 @@ const Index = () => {
       setLoading(false);
     }
   };
+
   const handleAddToFavorites = useCallback((track: any) => {
     setFavorites(prev => [...prev, track]);
   }, [setFavorites]);
+
   const handleFollowArtist = useCallback((channelId: string, artistName: string) => {
-    setFollowedArtists(prev => [...prev, {
-      id: channelId,
-      name: artistName
-    }]);
+    setFollowedArtists(prev => [...prev, { id: channelId, name: artistName }]);
   }, [setFollowedArtists]);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'search':
-        return <div className="space-y-6">
+        return (
+          <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-app-text-primary mb-4">
                 Resultados da Busca
               </h2>
-              {loading ? <div className="text-center py-8">
+              {loading ? (
+                <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-accent mx-auto"></div>
                   <p className="text-app-text-secondary mt-2">Buscando...</p>
-                </div> : <div className="space-y-3">
-                  {searchResults.map(track => <TrackCard key={track.id} track={track} isCurrentTrack={currentTrack?.id === track.id} isPlaying={isPlaying} onClick={() => handleTrackSelect(track)} />)}
-                </div>}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {searchResults.map((track) => (
+                    <TrackCard
+                      key={track.id}
+                      track={track}
+                      isCurrentTrack={currentTrack?.id === track.id}
+                      isPlaying={isPlaying}
+                      onClick={() => handleTrackSelect(track)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>;
+          </div>
+        );
+      
       case 'library':
-        return <div className="space-y-6">
+        return (
+          <div className="space-y-6">
             <h2 className="text-2xl font-bold text-app-text-primary mb-4">
               Minha Biblioteca
             </h2>
             {/* This section was replaced with favorites and followed artists below */}
-          </div>;
+          </div>
+        );
+      
       case 'history':
-        return <div className="space-y-6">
+        return (
+          <div className="space-y-6">
             <h2 className="text-2xl font-bold text-app-text-primary mb-4">
               Histórico
             </h2>
             <p className="text-app-text-secondary">
               Suas músicas reproduzidas recentemente aparecerão aqui.
             </p>
-          </div>;
+          </div>
+        );
+      
       default:
-        return <div className="space-y-8">
+        return (
+          <div className="space-y-8">
             {/* Search Bar */}
-            <div className="bg-app-surface rounded-2xl p-6 shadow-card py-[6px] my-0 mx-[99px] px-[45px]">
+            <div className="bg-app-surface rounded-2xl p-6 shadow-card">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
                   <img src="/lovable-uploads/67508e0d-5de8-4d0a-a3e9-3d86ae04639e.png" alt="PlaySong" className="w-full h-full object-cover" />
@@ -186,27 +213,53 @@ const Index = () => {
             </div>
 
             {/* Music Player */}
-            <MusicPlayer track={currentTrack} playlist={playlist} onTrackChange={setCurrentTrack} onAddToFavorites={handleAddToFavorites} onFollowArtist={handleFollowArtist} />
+            <MusicPlayer
+              track={currentTrack}
+              playlist={playlist}
+              onTrackChange={setCurrentTrack}
+              onAddToFavorites={handleAddToFavorites}
+              onFollowArtist={handleFollowArtist}
+            />
 
             {/* Popular Tracks */}
             <div>
               <h2 className="text-2xl font-bold text-app-text-primary mb-6">
                 Músicas em Alta
               </h2>
-              {loading ? <div className="text-center py-8">
+              {loading ? (
+                <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-accent mx-auto"></div>
                   <p className="text-app-text-secondary mt-2">Carregando...</p>
-                </div> : <div className="space-y-3">
-                {trendingTracks.map(track => <TrackCard key={track.id} track={track} isCurrentTrack={currentTrack?.id === track.id} isPlaying={isPlaying} onClick={() => handleTrackSelect(track)} />)}
-                </div>}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                {trendingTracks.map((track) => (
+                  <TrackCard
+                    key={track.id}
+                    track={track}
+                    isCurrentTrack={currentTrack?.id === track.id}
+                    isPlaying={isPlaying}
+                    onClick={() => handleTrackSelect(track)}
+                  />
+                ))}
+                </div>
+              )}
             </div>
-          </div>;
+          </div>
+        );
     }
   };
-  return <div className="min-h-screen bg-app-background dark">
+
+  return (
+    <div className="min-h-screen bg-app-background dark">
       <div className="flex">
         {/* Sidebar */}
-        <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} activeSection={activeSection} onSectionChange={setActiveSection} />
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onToggle={toggleSidebar}
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
 
         {/* Main Content */}
         <main className="flex-1 p-6 md:p-8 ml-0 md:ml-0">
@@ -215,6 +268,8 @@ const Index = () => {
           </div>
         </main>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
