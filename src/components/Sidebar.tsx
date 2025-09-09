@@ -1,43 +1,46 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Home, Search, Library, Clock, Menu, X } from 'lucide-react';
+
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   activeSection: string;
   onSectionChange: (section: string) => void;
 }
-export const Sidebar: React.FC<SidebarProps> = ({
-  isOpen,
-  onToggle,
-  activeSection,
-  onSectionChange
+
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  isOpen, 
+  onToggle, 
+  activeSection, 
+  onSectionChange 
 }) => {
-  const navItems = [{
-    id: 'home',
-    label: 'Início',
-    icon: Home
-  }, {
-    id: 'search',
-    label: 'Explorar',
-    icon: Search
-  }, {
-    id: 'library',
-    label: 'Minha Biblioteca',
-    icon: Library
-  }, {
-    id: 'history',
-    label: 'Histórico',
-    icon: Clock
-  }];
-  return <>
+  const navItems = [
+    { id: 'home', label: 'Início', icon: Home },
+    { id: 'search', label: 'Explorar', icon: Search },
+    { id: 'library', label: 'Minha Biblioteca', icon: Library },
+    { id: 'history', label: 'Histórico', icon: Clock },
+  ];
+
+  return (
+    <>
       {/* Mobile Menu Button */}
-      <Button variant="ghost" size="icon" onClick={onToggle} className="fixed top-4 left-4 z-50 md:hidden backdrop-blur-sm text-app-text-primary bg-blue-900 hover:bg-blue-800 mx-0 py-0 px-0">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggle}
+        className="fixed top-4 left-4 z-50 md:hidden bg-app-surface/80 backdrop-blur-sm hover:bg-app-surface text-app-text-primary"
+      >
         {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </Button>
 
       {/* Overlay for mobile */}
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onToggle} />}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onToggle}
+        />
+      )}
 
       {/* Sidebar */}
       <aside className={`
@@ -57,19 +60,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Navigation */}
           <nav className="space-y-2">
-            {navItems.map(item => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            return <Button key={item.id} variant={isActive ? "music-card" : "ghost"} className={`w-full justify-start gap-3 ${isActive ? 'bg-app-surface-hover text-app-text-primary' : 'text-app-text-secondary hover:text-app-text-primary hover:bg-app-surface-hover'}`} onClick={() => {
-              onSectionChange(item.id);
-              if (window.innerWidth < 768) onToggle();
-            }}>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+              
+              return (
+                <Button
+                  key={item.id}
+                  variant={isActive ? "music-card" : "ghost"}
+                  className={`w-full justify-start gap-3 ${
+                    isActive 
+                      ? 'bg-app-surface-hover text-app-text-primary' 
+                      : 'text-app-text-secondary hover:text-app-text-primary hover:bg-app-surface-hover'
+                  }`}
+                  onClick={() => {
+                    onSectionChange(item.id);
+                    if (window.innerWidth < 768) onToggle();
+                  }}
+                >
                   <Icon className="h-5 w-5" />
                   {item.label}
-                </Button>;
-          })}
+                </Button>
+              );
+            })}
           </nav>
         </div>
       </aside>
-    </>;
+    </>
+  );
 };
