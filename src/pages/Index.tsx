@@ -135,8 +135,8 @@ const Index = () => {
             {/* Search Bar */}
             <div className="bg-app-surface rounded-2xl p-6 shadow-card">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                  <span className="text-sm">▶️🎵</span>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img src="/lovable-uploads/67508e0d-5de8-4d0a-a3e9-3d86ae04639e.png" alt="PlaySong" className="w-full h-full object-cover" />
                 </div>
                 <h1 className="text-3xl font-bold text-app-text-primary">PlaySong</h1>
               </div>

@@ -52,8 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-6">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 pt-12 md:pt-0">
-            <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-lg">▶️🎵</span>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/lovable-uploads/67508e0d-5de8-4d0a-a3e9-3d86ae04639e.png" alt="PlaySong" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-2xl font-bold text-app-text-primary">PlaySong</h1>
           </div>

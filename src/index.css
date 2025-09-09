@@ -46,8 +46,8 @@ All colors MUST be HSL.
     --app-text-primary: 0 0% 95%;
     --app-text-secondary: 0 0% 70%;
     --app-text-muted: 0 0% 50%;
-    --app-accent: 141 76% 48%;
-    --app-accent-hover: 141 76% 55%;
+    --app-accent: 195 100% 60%;
+    --app-accent-hover: 195 100% 55%;
     --app-accent-foreground: 0 0% 0%;
     
     /* Progress and controls */
@@ -55,7 +55,7 @@ All colors MUST be HSL.
     --progress-fill: 0 0% 100%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--app-accent)), hsl(var(--app-accent-hover)));
+    --gradient-primary: linear-gradient(135deg, hsl(195, 100%, 60%), hsl(220, 100%, 70%));
     --gradient-surface: linear-gradient(145deg, hsl(var(--app-surface)), hsl(var(--app-surface-hover)));
     
     /* Shadows */
