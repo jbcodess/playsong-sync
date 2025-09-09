@@ -1,73 +1,145 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MusicPlayer } from '@/components/MusicPlayer';
 import { Sidebar } from '@/components/Sidebar';
 import { TrackCard } from '@/components/TrackCard';
 import { SearchBar } from '@/components/SearchBar';
+import { YouTubeService, YouTubeVideo } from '@/services/youtubeApi';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useToast } from '@/hooks/use-toast';
 
-// Sample track data
-const sampleTracks = [
-  {
-    id: '1',
-    title: 'Bohemian Rhapsody',
-    artist: 'Queen',
-    albumArt: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop',
-    audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', // Sample audio
-    duration: 355,
-  },
-  {
-    id: '2',
-    title: 'Imagine',
-    artist: 'John Lennon',
-    albumArt: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
-    audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
-    duration: 183,
-  },
-  {
-    id: '3',
-    title: 'Hotel California',
-    artist: 'Eagles',
-    albumArt: 'https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=400&h=400&fit=crop',
-    audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
-    duration: 391,
-  },
-  {
-    id: '4',
-    title: 'Sweet Child O Mine',
-    artist: 'Guns N Roses',
-    albumArt: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop',
-    audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
-    duration: 356,
-  },
-  {
-    id: '5',
-    title: 'Stairway to Heaven',
-    artist: 'Led Zeppelin',
-    albumArt: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop',
-    audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
-    duration: 482,
-  },
-];
+// Convert YouTube video to Track interface
+const convertYouTubeVideoToTrack = (video: YouTubeVideo) => ({
+  id: video.id.videoId,
+  title: video.snippet.title,
+  artist: video.snippet.channelTitle,
+  albumArt: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default.url,
+  audioUrl: `https://www.youtube.com/watch?v=${video.id.videoId}`,
+  duration: 0, // Duration will be set when video loads
+  channelId: video.snippet.channelId,
+  videoId: video.id.videoId
+});
 
 const Index = () => {
-  const [currentTrack, setCurrentTrack] = useState(sampleTracks[0]);
+  const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
-  const [searchResults, setSearchResults] = useState(sampleTracks);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [trendingTracks, setTrendingTracks] = useState<any[]>([]);
+  const [playlist, setPlaylist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  
+  const [favorites, setFavorites] = useLocalStorage<any[]>('playsong-favorites', []);
+  const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
+  
+  const { toast } = useToast();
+  const youtubeService = YouTubeService.getInstance();
 
-  const handleTrackSelect = (track: typeof sampleTracks[0]) => {
+  // Load trending tracks on component mount
+  useEffect(() => {
+    loadTrendingTracks();
+    
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('Service Worker registered'))
+        .catch(err => console.error('Service Worker registration failed:', err));
+    }
+  }, []);
+
+  const loadTrendingTracks = async () => {
+    try {
+      setLoading(true);
+      const videos = await youtubeService.getTrendingVideos('BR', 20);
+      const tracks = videos.map(convertYouTubeVideoToTrack);
+      setTrendingTracks(tracks);
+      setPlaylist(tracks);
+      if (!currentTrack && tracks.length > 0) {
+        setCurrentTrack(tracks[0]);
+      }
+    } catch (error) {
+      console.error('Error loading trending tracks:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as músicas em alta",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTrackSelect = useCallback((track: any) => {
     setCurrentTrack(track);
+    setIsPlaying(true);
+  }, []);
+
+  const handleSearch = async (query: string) => {
+    try {
+      setLoading(true);
+      setActiveSection('search');
+      
+      // Check if it's a YouTube URL
+      const videoId = youtubeService.extractVideoId(query);
+      if (videoId) {
+        const videoDetails = await youtubeService.getVideoDetails(videoId);
+        if (videoDetails) {
+          const track = {
+            id: videoId,
+            title: videoDetails.snippet.title,
+            artist: videoDetails.snippet.channelTitle,
+            albumArt: videoDetails.snippet.thumbnails.high?.url || videoDetails.snippet.thumbnails.medium?.url,
+            audioUrl: `https://www.youtube.com/watch?v=${videoId}`,
+            duration: 0,
+            channelId: videoDetails.snippet.channelId,
+            videoId: videoId
+          };
+          setCurrentTrack(track);
+          setPlaylist([track]);
+          setSearchResults([track]);
+        }
+      } else {
+        // Search for videos
+        const searchResponse = await youtubeService.searchVideos(query, 25);
+        const tracks = searchResponse.items.map(convertYouTubeVideoToTrack);
+        setSearchResults(tracks);
+        setPlaylist(tracks);
+        setNextPageToken(searchResponse.nextPageToken || null);
+      }
+    } catch (error) {
+      console.error('Error searching:', error);
+      toast({
+        title: "Erro na busca",
+        description: "Não foi possível realizar a busca",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearch = (query: string) => {
-    // Filter tracks based on search query
-    const filtered = sampleTracks.filter(track =>
-      track.title.toLowerCase().includes(query.toLowerCase()) ||
-      track.artist.toLowerCase().includes(query.toLowerCase())
-    );
-    setSearchResults(filtered);
-    setActiveSection('search');
+  const loadMoreResults = async () => {
+    if (!nextPageToken) return;
+    
+    try {
+      setLoading(true);
+      // This would need the last search query - we'd need to store it
+      // For now, we'll just disable this feature
+    } catch (error) {
+      console.error('Error loading more results:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleAddToFavorites = useCallback((track: any) => {
+    setFavorites(prev => [...prev, track]);
+  }, [setFavorites]);
+
+  const handleFollowArtist = useCallback((channelId: string, artistName: string) => {
+    setFollowedArtists(prev => [...prev, { id: channelId, name: artistName }]);
+  }, [setFollowedArtists]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -82,17 +154,24 @@ const Index = () => {
               <h2 className="text-2xl font-bold text-app-text-primary mb-4">
                 Resultados da Busca
               </h2>
-              <div className="space-y-3">
-                {searchResults.map((track) => (
-                  <TrackCard
-                    key={track.id}
-                    track={track}
-                    isCurrentTrack={currentTrack?.id === track.id}
-                    isPlaying={isPlaying}
-                    onClick={() => handleTrackSelect(track)}
-                  />
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-accent mx-auto"></div>
+                  <p className="text-app-text-secondary mt-2">Buscando...</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {searchResults.map((track) => (
+                    <TrackCard
+                      key={track.id}
+                      track={track}
+                      isCurrentTrack={currentTrack?.id === track.id}
+                      isPlaying={isPlaying}
+                      onClick={() => handleTrackSelect(track)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -103,17 +182,7 @@ const Index = () => {
             <h2 className="text-2xl font-bold text-app-text-primary mb-4">
               Minha Biblioteca
             </h2>
-            <div className="space-y-3">
-              {sampleTracks.map((track) => (
-                <TrackCard
-                  key={track.id}
-                  track={track}
-                  isCurrentTrack={currentTrack?.id === track.id}
-                  isPlaying={isPlaying}
-                  onClick={() => handleTrackSelect(track)}
-                />
-              ))}
-            </div>
+            {/* This section was replaced with favorites and followed artists below */}
           </div>
         );
       
@@ -146,17 +215,25 @@ const Index = () => {
             {/* Music Player */}
             <MusicPlayer
               track={currentTrack}
-              playlist={sampleTracks}
+              playlist={playlist}
               onTrackChange={setCurrentTrack}
+              onAddToFavorites={handleAddToFavorites}
+              onFollowArtist={handleFollowArtist}
             />
 
             {/* Popular Tracks */}
             <div>
               <h2 className="text-2xl font-bold text-app-text-primary mb-6">
-                Músicas Populares
+                Músicas em Alta
               </h2>
-              <div className="space-y-3">
-                {sampleTracks.map((track) => (
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-accent mx-auto"></div>
+                  <p className="text-app-text-secondary mt-2">Carregando...</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                {trendingTracks.map((track) => (
                   <TrackCard
                     key={track.id}
                     track={track}
@@ -165,7 +242,8 @@ const Index = () => {
                     onClick={() => handleTrackSelect(track)}
                   />
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         );

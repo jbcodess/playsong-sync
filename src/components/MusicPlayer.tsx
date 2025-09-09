@@ -1,83 +1,98 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Download } from 'lucide-react';
+import { useMediaSession } from '@/hooks/useMediaSession';
+import { useToast } from '@/hooks/use-toast';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-interface Track {
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
+export interface Track {
   id: string;
   title: string;
   artist: string;
   albumArt: string;
   audioUrl: string;
   duration: number;
+  channelId?: string;
+  videoId?: string;
 }
 
-interface MusicPlayerProps {
+export interface MusicPlayerProps {
   track: Track | null;
   playlist: Track[];
   onTrackChange?: (track: Track) => void;
+  onAddToFavorites?: (track: Track) => void;
+  onFollowArtist?: (channelId: string, artistName: string) => void;
 }
 
 export const MusicPlayer: React.FC<MusicPlayerProps> = ({ 
   track, 
   playlist, 
-  onTrackChange 
+  onTrackChange,
+  onAddToFavorites,
+  onFollowArtist
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(100);
+  const [favorites, setFavorites] = useLocalStorage<Track[]>('playsong-favorites', []);
+  const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
+  
+  const playerRef = useRef<any>(null);
+  const { toast } = useToast();
 
-  // Toggle play/pause functionality
-  const togglePlayPause = () => {
-    if (!audioRef.current || !track) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  // Handle track change
-  useEffect(() => {
-    if (audioRef.current && track) {
-      audioRef.current.load();
-      setCurrentTime(0);
-      if (isPlaying) {
-        audioRef.current.play();
+  const togglePlayPause = useCallback(() => {
+    if (playerRef.current && track?.videoId) {
+      const state = playerRef.current.getPlayerState();
+      if (state === 1) { // Playing
+        playerRef.current.pauseVideo();
+      } else {
+        playerRef.current.playVideo();
       }
     }
-  }, [track]);
+  }, [track?.videoId]);
 
-  // Update current time
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const handleEnded = () => {
-      setIsPlaying(false);
-      playNext();
-    };
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [track]);
-
-  // Handle volume changes
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
+  const seekTo = useCallback((time: number) => {
+    if (playerRef.current) {
+      playerRef.current.seekTo(time, true);
     }
-  }, [volume]);
+  }, []);
+
+  const addToFavorites = useCallback(() => {
+    if (track) {
+      const isAlreadyFavorite = favorites.some(fav => fav.id === track.id);
+      if (isAlreadyFavorite) {
+        setFavorites(favorites.filter(fav => fav.id !== track.id));
+        toast({ title: "Removido dos favoritos", description: track.title });
+      } else {
+        setFavorites([...favorites, track]);
+        toast({ title: "Adicionado aos favoritos", description: track.title });
+        onAddToFavorites?.(track);
+      }
+    }
+  }, [track, favorites, setFavorites, toast, onAddToFavorites]);
+
+  const followArtist = useCallback(() => {
+    if (track?.channelId) {
+      const isAlreadyFollowed = followedArtists.some(artist => artist.id === track.channelId);
+      if (isAlreadyFollowed) {
+        setFollowedArtists(followedArtists.filter(artist => artist.id !== track.channelId));
+        toast({ title: "Parou de seguir", description: track.artist });
+      } else {
+        setFollowedArtists([...followedArtists, { id: track.channelId, name: track.artist }]);
+        toast({ title: "Seguindo artista", description: track.artist });
+        onFollowArtist?.(track.channelId, track.artist);
+      }
+    }
+  }, [track, followedArtists, setFollowedArtists, toast, onFollowArtist]);
 
   const playNext = () => {
     if (!track || !playlist.length) return;
@@ -95,37 +110,129 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     onTrackChange?.(playlist[previousIndex]);
   };
 
-  const handleSeek = (value: number[]) => {
-    if (audioRef.current && track) {
-      const seekTime = (value[0] / 100) * track.duration;
-      audioRef.current.currentTime = seekTime;
-      setCurrentTime(seekTime);
+  // Initialize YouTube Player
+  useEffect(() => {
+    if (track?.videoId && window.YT) {
+      if (playerRef.current) {
+        playerRef.current.loadVideoById(track.videoId);
+      } else {
+        playerRef.current = new window.YT.Player('youtube-player', {
+          height: '0',
+          width: '0',
+          videoId: track.videoId,
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            disablekb: 1,
+            enablejsapi: 1,
+            fs: 0,
+            iv_load_policy: 3,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0
+          },
+          events: {
+            onReady: (event: any) => {
+              setDuration(event.target.getDuration());
+            },
+            onStateChange: (event: any) => {
+              if (event.data === 1) { // Playing
+                setIsPlaying(true);
+              } else if (event.data === 2) { // Paused
+                setIsPlaying(false);
+              } else if (event.data === 0) { // Ended
+                playNext();
+              }
+            }
+          }
+        });
+      }
     }
+  }, [track?.videoId]);
+
+  // Update time while playing
+  useEffect(() => {
+    const updateTime = () => {
+      if (playerRef.current && isPlaying) {
+        try {
+          const current = playerRef.current.getCurrentTime();
+          const total = playerRef.current.getDuration();
+          setCurrentTime(current);
+          if (total !== duration) {
+            setDuration(total);
+          }
+        } catch (error) {
+          console.error('Error updating time:', error);
+        }
+      }
+    };
+
+    if (isPlaying) {
+      const interval = setInterval(updateTime, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isPlaying, duration]);
+
+  // Media Session API for background playback controls
+  useMediaSession(
+    track ? {
+      title: track.title,
+      artist: track.artist,
+      artwork: [{
+        src: track.albumArt,
+        sizes: '512x512',
+        type: 'image/jpeg'
+      }]
+    } : null,
+    {
+      onPlay: togglePlayPause,
+      onPause: togglePlayPause,
+      onPreviousTrack: playPrevious,
+      onNextTrack: playNext,
+      onSeekTo: seekTo
+    },
+    isPlaying
+  );
+
+  // Load YouTube API
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      
+      (window as any).onYouTubeIframeAPIReady = () => {
+        console.log('YouTube API ready');
+      };
+    }
+  }, []);
+
+  const handleSeek = (value: number[]) => {
+    const seekTime = (value[0] / 100) * duration;
+    seekTo(seekTime);
   };
 
   const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return '0:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const isTrackFavorite = favorites.some(fav => fav.id === track?.id);
+  const isArtistFollowed = followedArtists.some(artist => artist.id === track?.channelId);
+
   if (!track) {
     return (
-      <div className="bg-app-surface rounded-2xl p-8 text-center shadow-player">
+      <div className="bg-app-surface rounded-2xl p-8 text-center shadow-card">
         <div className="text-app-text-muted text-lg">Selecione uma música para começar</div>
       </div>
     );
   }
 
-  const progressPercentage = track.duration ? (currentTime / track.duration) * 100 : 0;
-
   return (
-    <div className="bg-gradient-surface rounded-2xl p-8 shadow-player max-w-md mx-auto">
-      {/* Audio element */}
-      <audio ref={audioRef} preload="metadata">
-        <source src={track.audioUrl} type="audio/mpeg" />
-      </audio>
-
+    <div className="bg-gradient-surface rounded-2xl p-8 shadow-card max-w-md mx-auto">
       {/* Album Art */}
       <div className="relative mb-6">
         <img
@@ -150,63 +257,92 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
       {/* Progress Bar */}
       <div className="mb-6">
-        <Slider
-          value={[progressPercentage]}
-          onValueChange={handleSeek}
-          max={100}
-          step={0.1}
-          className="w-full"
-        />
-        <div className="flex justify-between text-app-text-muted text-sm mt-2">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(track.duration)}</span>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-sm text-app-text-muted min-w-[3rem]">
+            {formatTime(currentTime)}
+          </span>
+          <Slider
+            value={[duration ? (currentTime / duration) * 100 : 0]}
+            max={100}
+            step={1}
+            onValueChange={handleSeek}
+            className="flex-1"
+          />
+          <span className="text-sm text-app-text-muted min-w-[3rem] text-right">
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-4 mb-6">
         <Button
-          variant="player-control"
-          size="control"
+          variant="ghost"
+          size="icon"
           onClick={playPrevious}
-          className="rounded-full"
+          className="h-10 w-10 text-app-text-secondary hover:text-app-text-primary"
         >
-          <SkipBack className="h-6 w-6" />
+          <SkipBack className="h-5 w-5" />
         </Button>
-
+        
         <Button
           variant="play"
-          size="play-button"
+          size="icon"
           onClick={togglePlayPause}
-          className="rounded-full"
+          className="h-12 w-12"
         >
-          {isPlaying ? (
-            <Pause className="h-8 w-8" />
-          ) : (
-            <Play className="h-8 w-8 ml-1" />
-          )}
+          {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
         </Button>
-
+        
         <Button
-          variant="player-control"
-          size="control"
+          variant="ghost"
+          size="icon"
           onClick={playNext}
-          className="rounded-full"
+          className="h-10 w-10 text-app-text-secondary hover:text-app-text-primary"
         >
-          <SkipForward className="h-6 w-6" />
+          <SkipForward className="h-5 w-5" />
         </Button>
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex items-center justify-center gap-4 mb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={addToFavorites}
+          className={`flex items-center gap-2 ${isTrackFavorite ? 'text-red-400' : 'text-app-text-secondary'}`}
+        >
+          <Heart className={`h-4 w-4 ${isTrackFavorite ? 'fill-current' : ''}`} />
+          {isTrackFavorite ? 'Favorito' : 'Favoritar'}
+        </Button>
+        
+        {track?.channelId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={followArtist}
+            className={`flex items-center gap-2 ${isArtistFollowed ? 'text-app-accent' : 'text-app-text-secondary'}`}
+          >
+            {isArtistFollowed ? 'Seguindo' : 'Seguir'} Artista
+          </Button>
+        )}
+      </div>
+
       {/* Volume Control */}
-      <div className="flex items-center gap-3">
-        <Volume2 className="h-5 w-5 text-app-text-secondary" />
+      <div className="flex items-center gap-2">
+        <Volume2 className="h-4 w-4 text-app-text-muted" />
         <Slider
-          value={[volume * 100]}
-          onValueChange={(value) => setVolume(value[0] / 100)}
+          value={[volume]}
           max={100}
           step={1}
-          className="flex-1"
+          onValueChange={(value) => setVolume(value[0])}
+          className="w-20"
         />
+      </div>
+
+      {/* Hidden YouTube Player */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div id="youtube-player"></div>
       </div>
     </div>
   );
