@@ -15,12 +15,19 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        
+        // Music Player Variants
+        "play": "bg-app-accent text-app-accent-foreground hover:bg-app-accent-hover hover:scale-105 transition-all duration-200 shadow-lg",
+        "player-control": "bg-transparent text-app-text-secondary hover:text-app-text-primary hover:bg-app-surface-hover transition-all duration-200",
+        "music-card": "bg-app-surface hover:bg-app-surface-hover text-app-text-primary transition-all duration-200 shadow-card",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        "play-button": "h-14 w-14 rounded-full",
+        "control": "h-12 w-12",
       },
     },
     defaultVariants: {

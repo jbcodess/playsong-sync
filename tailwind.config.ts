@@ -57,6 +57,32 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        
+        // Music App Colors
+        app: {
+          background: "hsl(var(--app-background))",
+          surface: "hsl(var(--app-surface))",
+          "surface-hover": "hsl(var(--app-surface-hover))",
+          sidebar: "hsl(var(--app-sidebar))",
+          "text-primary": "hsl(var(--app-text-primary))",
+          "text-secondary": "hsl(var(--app-text-secondary))",
+          "text-muted": "hsl(var(--app-text-muted))",
+          accent: "hsl(var(--app-accent))",
+          "accent-hover": "hsl(var(--app-accent-hover))",
+          "accent-foreground": "hsl(var(--app-accent-foreground))",
+        },
+        progress: {
+          background: "hsl(var(--progress-background))",
+          fill: "hsl(var(--progress-fill))",
+        },
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-surface": "var(--gradient-surface)",
+      },
+      boxShadow: {
+        "player": "var(--shadow-player)",
+        "card": "var(--shadow-card)",
       },
       borderRadius: {
         lg: "var(--radius)",

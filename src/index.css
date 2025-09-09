@@ -38,59 +38,68 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
+    /* Music App Dark Theme */
+    --app-background: 222 84% 3%;
+    --app-surface: 222 47% 7%;
+    --app-surface-hover: 222 47% 10%;
+    --app-sidebar: 222 47% 5%;
+    --app-text-primary: 0 0% 95%;
+    --app-text-secondary: 0 0% 70%;
+    --app-text-muted: 0 0% 50%;
+    --app-accent: 141 76% 48%;
+    --app-accent-hover: 141 76% 55%;
+    --app-accent-foreground: 0 0% 0%;
+    
+    /* Progress and controls */
+    --progress-background: 0 0% 30%;
+    --progress-fill: 0 0% 100%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--app-accent)), hsl(var(--app-accent-hover)));
+    --gradient-surface: linear-gradient(145deg, hsl(var(--app-surface)), hsl(var(--app-surface-hover)));
+    
+    /* Shadows */
+    --shadow-player: 0 25px 50px -12px hsl(var(--app-background) / 0.8);
+    --shadow-card: 0 4px 12px hsl(var(--app-background) / 0.3);
+
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
+    --background: hsl(var(--app-background));
+    --foreground: hsl(var(--app-text-primary));
+    --card: hsl(var(--app-surface));
+    --card-foreground: hsl(var(--app-text-primary));
+    --popover: hsl(var(--app-surface));
+    --popover-foreground: hsl(var(--app-text-primary));
+    --primary: hsl(var(--app-accent));
+    --primary-foreground: hsl(var(--app-accent-foreground));
+    --secondary: hsl(var(--app-surface-hover));
+    --secondary-foreground: hsl(var(--app-text-primary));
+    --muted: hsl(var(--app-surface));
+    --muted-foreground: hsl(var(--app-text-muted));
+    --accent: hsl(var(--app-accent));
+    --accent-foreground: hsl(var(--app-accent-foreground));
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: hsl(var(--app-surface-hover));
+    --input: hsl(var(--app-surface-hover));
+    --ring: hsl(var(--app-accent));
+    --sidebar-background: hsl(var(--app-sidebar));
+    --sidebar-foreground: hsl(var(--app-text-secondary));
+    --sidebar-primary: hsl(var(--app-accent));
+    --sidebar-primary-foreground: hsl(var(--app-accent-foreground));
+    --sidebar-accent: hsl(var(--app-surface-hover));
+    --sidebar-accent-foreground: hsl(var(--app-text-primary));
+    --sidebar-border: hsl(var(--app-surface-hover));
+    --sidebar-ring: hsl(var(--app-accent));
   }
 }
 
