@@ -59,7 +59,14 @@ const Register = () => {
             />
           </div>
 
-          <Button type="submit" className="w-full bg-app-accent hover:bg-app-accent-hover text-app-accent-foreground">
+          <Button 
+            type="submit" 
+            className="w-full bg-app-accent hover:bg-app-accent-hover text-app-accent-foreground"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/dashboard';
+            }}
+          >
             Criar Conta
           </Button>
 

@@ -129,7 +129,8 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
             iv_load_policy: 3,
             modestbranding: 1,
             rel: 0,
-            showinfo: 0
+            showinfo: 0,
+            playsinline: 1 // Enable background playback on mobile
           },
           events: {
             onReady: (event: any) => {
