@@ -224,11 +224,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const isArtistFollowed = followedArtists.some(artist => artist.id === track?.channelId);
 
   if (!track) {
-    return (
-      <div className="bg-app-surface rounded-2xl p-8 text-center shadow-card">
-        <div className="text-app-text-muted text-lg">Selecione uma música para começar</div>
-      </div>
-    );
+    return null; // Don't render anything if no track is selected
   }
 
   return (

@@ -52,7 +52,7 @@ All colors MUST be HSL.
     
     /* Progress and controls */
     --progress-background: 0 0% 30%;
-    --progress-fill: 0 0% 100%;
+    --progress-fill: 195 100% 60%; /* Blue progress bar color */
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(195, 100%, 60%), hsl(220, 100%, 70%));
