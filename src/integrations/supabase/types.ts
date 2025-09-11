@@ -14,7 +14,162 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      favorites: {
+        Row: {
+          created_at: string
+          id: string
+          track_album_art: string | null
+          track_artist: string
+          track_channel_id: string | null
+          track_id: string
+          track_title: string
+          track_video_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          track_album_art?: string | null
+          track_artist: string
+          track_channel_id?: string | null
+          track_id: string
+          track_title: string
+          track_video_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          track_album_art?: string | null
+          track_artist?: string
+          track_channel_id?: string | null
+          track_id?: string
+          track_title?: string
+          track_video_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      followed_artists: {
+        Row: {
+          artist_id: string
+          artist_name: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          artist_id: string
+          artist_name: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          artist_id?: string
+          artist_name?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      listening_history: {
+        Row: {
+          id: string
+          played_at: string
+          track_album_art: string | null
+          track_artist: string
+          track_channel_id: string | null
+          track_id: string
+          track_title: string
+          track_video_id: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          played_at?: string
+          track_album_art?: string | null
+          track_artist: string
+          track_channel_id?: string | null
+          track_id: string
+          track_title: string
+          track_video_id?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          played_at?: string
+          track_album_art?: string | null
+          track_artist?: string
+          track_channel_id?: string | null
+          track_id?: string
+          track_title?: string
+          track_video_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          auto_play: boolean | null
+          created_at: string
+          id: string
+          show_notifications: boolean | null
+          theme_color: string | null
+          updated_at: string
+          user_id: string
+          volume: number | null
+        }
+        Insert: {
+          auto_play?: boolean | null
+          created_at?: string
+          id?: string
+          show_notifications?: boolean | null
+          theme_color?: string | null
+          updated_at?: string
+          user_id: string
+          volume?: number | null
+        }
+        Update: {
+          auto_play?: boolean | null
+          created_at?: string
+          id?: string
+          show_notifications?: boolean | null
+          theme_color?: string | null
+          updated_at?: string
+          user_id?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MusicPlayer } from '@/components/MusicPlayer';
 import { Sidebar } from '@/components/Sidebar';
 import { TrackCard } from '@/components/TrackCard';
 import { SearchBar } from '@/components/SearchBar';
 import { YouTubeService, YouTubeVideo } from '@/services/youtubeApi';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 // Convert YouTube video to Track interface
 const convertYouTubeVideoToTrack = (video: YouTubeVideo) => ({
@@ -20,6 +22,8 @@ const convertYouTubeVideoToTrack = (video: YouTubeVideo) => ({
 });
 
 const Dashboard = () => {
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,34 +34,126 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   
-  const [favorites, setFavorites] = useLocalStorage<any[]>('playsong-favorites', []);
-  const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
-  const [history, setHistory] = useLocalStorage<any[]>('playsong-history', []);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [followedArtists, setFollowedArtists] = useState<Array<{id: string, name: string}>>([]);
+  const [history, setHistory] = useState<any[]>([]);
   
   const { toast } = useToast();
   const youtubeService = YouTubeService.getInstance();
 
-  // Load trending tracks on component mount
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadTrendingTracks();
-    
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log('Service Worker registered'))
-        .catch(err => console.error('Service Worker registration failed:', err));
+    if (!authLoading && !isAuthenticated) {
+      navigate('/');
     }
-  }, []);
+  }, [authLoading, isAuthenticated, navigate]);
+
+  // Load user data and trending tracks
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+      loadTrendingTracks();
+      
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(() => console.log('Service Worker registered'))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      }
+    }
+  }, [user]);
+
+  const loadUserData = async () => {
+    if (!user) return;
+
+    try {
+      // Load favorites
+      const { data: favoritesData } = await supabase
+        .from('favorites')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (favoritesData) {
+        const favTracks = favoritesData.map(fav => ({
+          id: fav.track_id,
+          title: fav.track_title,
+          artist: fav.track_artist,
+          albumArt: fav.track_album_art,
+          videoId: fav.track_video_id,
+          channelId: fav.track_channel_id,
+          audioUrl: `https://www.youtube.com/watch?v=${fav.track_video_id}`
+        }));
+        setFavorites(favTracks);
+      }
+
+      // Load followed artists
+      const { data: artistsData } = await supabase
+        .from('followed_artists')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (artistsData) {
+        setFollowedArtists(artistsData.map(artist => ({
+          id: artist.artist_id,
+          name: artist.artist_name
+        })));
+      }
+
+      // Load history
+      const { data: historyData } = await supabase
+        .from('listening_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('played_at', { ascending: false })
+        .limit(50);
+      
+      if (historyData) {
+        const historyTracks = historyData.map(hist => ({
+          id: hist.track_id,
+          title: hist.track_title,
+          artist: hist.track_artist,
+          albumArt: hist.track_album_art,
+          videoId: hist.track_video_id,
+          channelId: hist.track_channel_id,
+          audioUrl: `https://www.youtube.com/watch?v=${hist.track_video_id}`,
+          playedAt: hist.played_at
+        }));
+        setHistory(historyTracks);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  };
 
   // Add track to history when it changes
   useEffect(() => {
-    if (currentTrack) {
+    if (currentTrack && user) {
+      // Add to local state
       setHistory(prev => {
         const filtered = prev.filter(track => track.id !== currentTrack.id);
-        return [currentTrack, ...filtered].slice(0, 50); // Keep last 50 tracks
+        return [currentTrack, ...filtered].slice(0, 50);
       });
+
+      // Save to database
+      const saveToHistory = async () => {
+        try {
+          await supabase.from('listening_history').insert({
+            user_id: user.id,
+            track_id: currentTrack.id,
+            track_title: currentTrack.title,
+            track_artist: currentTrack.artist,
+            track_album_art: currentTrack.albumArt,
+            track_video_id: currentTrack.videoId,
+            track_channel_id: currentTrack.channelId
+          });
+        } catch (error) {
+          console.error('Error saving to history:', error);
+        }
+      };
+      
+      saveToHistory();
     }
-  }, [currentTrack, setHistory]);
+  }, [currentTrack, user]);
 
   const loadTrendingTracks = async () => {
     try {
@@ -127,19 +223,97 @@ const Dashboard = () => {
     }
   };
 
-  const handleAddToFavorites = useCallback((track: any) => {
-    setFavorites(prev => [...prev, track]);
-  }, [setFavorites]);
+  const handleAddToFavorites = useCallback(async (track: any) => {
+    if (!user) return;
+    
+    try {
+      const isAlreadyFavorite = favorites.some(fav => fav.id === track.id);
+      
+      if (isAlreadyFavorite) {
+        // Remove from favorites
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('track_id', track.id);
+        
+        setFavorites(prev => prev.filter(fav => fav.id !== track.id));
+        toast({ title: "Removido dos favoritos", description: track.title });
+      } else {
+        // Add to favorites
+        await supabase.from('favorites').insert({
+          user_id: user.id,
+          track_id: track.id,
+          track_title: track.title,
+          track_artist: track.artist,
+          track_album_art: track.albumArt,
+          track_video_id: track.videoId,
+          track_channel_id: track.channelId
+        });
+        
+        setFavorites(prev => [...prev, track]);
+        toast({ title: "Adicionado aos favoritos", description: track.title });
+      }
+    } catch (error) {
+      console.error('Error managing favorites:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar favoritos",
+        variant: "destructive"
+      });
+    }
+  }, [user, favorites, toast]);
 
-  const handleFollowArtist = useCallback((channelId: string, artistName: string) => {
-    setFollowedArtists(prev => [...prev, { id: channelId, name: artistName }]);
-  }, [setFollowedArtists]);
+  const handleFollowArtist = useCallback(async (channelId: string, artistName: string) => {
+    if (!user) return;
+    
+    try {
+      const isAlreadyFollowed = followedArtists.some(artist => artist.id === channelId);
+      
+      if (isAlreadyFollowed) {
+        // Unfollow artist
+        await supabase
+          .from('followed_artists')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('artist_id', channelId);
+        
+        setFollowedArtists(prev => prev.filter(artist => artist.id !== channelId));
+        toast({ title: "Parou de seguir", description: artistName });
+      } else {
+        // Follow artist
+        await supabase.from('followed_artists').insert({
+          user_id: user.id,
+          artist_id: channelId,
+          artist_name: artistName
+        });
+        
+        setFollowedArtists(prev => [...prev, { id: channelId, name: artistName }]);
+        toast({ title: "Seguindo artista", description: artistName });
+      }
+    } catch (error) {
+      console.error('Error managing followed artists:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar artista seguido",
+        variant: "destructive"
+      });
+    }
+  }, [user, followedArtists, toast]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   const renderContent = () => {
+    if (authLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-accent"></div>
+        </div>
+      );
+    }
+
     switch (activeSection) {
       case 'search':
         return (
@@ -233,6 +407,19 @@ const Dashboard = () => {
           onToggle={toggleSidebar}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
+          favorites={favorites}
+          followedArtists={followedArtists}
+          history={history}
+          onClearHistory={async () => {
+            if (user) {
+              await supabase
+                .from('listening_history')
+                .delete()
+                .eq('user_id', user.id);
+              setHistory([]);
+              toast({ title: "Histórico limpo" });
+            }
+          }}
         />
 
         {/* Main Content */}

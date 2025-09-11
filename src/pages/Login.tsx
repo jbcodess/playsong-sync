@@ -1,10 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/dashboard');
+      }
+    });
+  }, [navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      toast({
+        title: "Erro no login",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      navigate('/dashboard');
+    }
+    setLoading(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`
+      }
+    });
+    
+    if (error) {
+      toast({
+        title: "Erro no login",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-app-background dark flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-app-surface rounded-2xl p-8 shadow-card">
@@ -18,14 +73,17 @@ const Login = () => {
         </div>
 
         {/* Login Form */}
-        <form className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-app-text-primary">Email</Label>
             <Input
               id="email"
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
               className="bg-app-surface-hover border-app-surface-hover text-app-text-primary"
+              required
             />
           </div>
 
@@ -34,25 +92,26 @@ const Login = () => {
             <Input
               id="password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="bg-app-surface-hover border-app-surface-hover text-app-text-primary"
+              required
             />
           </div>
 
           <Button 
             type="submit" 
+            disabled={loading}
             className="w-full bg-app-accent hover:bg-app-accent-hover text-app-accent-foreground"
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = '/dashboard';
-            }}
           >
-            Entrar
+            {loading ? 'Entrando...' : 'Entrar'}
           </Button>
 
           <Button
             type="button"
             variant="outline"
+            onClick={handleGoogleLogin}
             className="w-full border-app-accent text-app-accent hover:bg-app-accent hover:text-app-accent-foreground"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -69,12 +128,12 @@ const Login = () => {
         <div className="mt-6 text-center">
           <p className="text-app-text-secondary">
             Não tem conta?{' '}
-            <Link
-              to="/register"
+            <button
+              onClick={() => navigate('/register')}
               className="text-app-accent hover:text-app-accent-hover font-medium"
             >
               Cadastre-se
-            </Link>
+            </button>
           </p>
         </div>
 

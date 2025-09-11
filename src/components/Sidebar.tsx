@@ -7,13 +7,21 @@ interface SidebarProps {
   onToggle: () => void;
   activeSection: string;
   onSectionChange: (section: string) => void;
+  favorites?: any[];
+  followedArtists?: Array<{id: string, name: string}>;
+  history?: any[];
+  onClearHistory?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   isOpen, 
   onToggle, 
   activeSection, 
-  onSectionChange 
+  onSectionChange,
+  favorites = [],
+  followedArtists = [],
+  history = [],
+  onClearHistory
 }) => {
   const navItems = [
     { id: 'home', label: 'Início', icon: Home },
