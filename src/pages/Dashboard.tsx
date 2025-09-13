@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MusicPlayer } from '@/components/MusicPlayer';
+import { FullScreenPlayer } from '@/components/FullScreenPlayer';
 import { MobileDrawer } from '@/components/MobileDrawer';
 import { TrackCard } from '@/components/TrackCard';
 import { SearchBar } from '@/components/SearchBar';
@@ -27,6 +27,8 @@ const Dashboard = () => {
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [trendingTracks, setTrendingTracks] = useState<any[]>([]);
@@ -177,6 +179,8 @@ const Dashboard = () => {
   const handleTrackSelect = useCallback((track: any) => {
     setCurrentTrack(track);
     setIsPlaying(true);
+    setIsPlayerOpen(true);
+    setIsPlayerMinimized(false);
   }, []);
 
   const handleSearch = async (query: string) => {
@@ -303,6 +307,21 @@ const Dashboard = () => {
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleClosePlayer = () => {
+    setIsPlayerOpen(false);
+    setIsPlayerMinimized(false);
+    setCurrentTrack(null);
+    setIsPlaying(false);
+  };
+
+  const handleMinimizePlayer = () => {
+    setIsPlayerMinimized(true);
+  };
+
+  const handleMaximizePlayer = () => {
+    setIsPlayerMinimized(false);
   };
 
   const renderContent = () => {
@@ -593,20 +612,19 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* Bottom Player - Fixed at bottom on mobile */}
-      {currentTrack && (
-        <div className="fixed bottom-0 left-0 right-0 bg-app-surface/95 backdrop-blur-sm border-t border-app-surface-hover p-4">
-          <div className="max-w-md mx-auto">
-            <MusicPlayer
-              track={currentTrack}
-              playlist={playlist}
-              onTrackChange={setCurrentTrack}
-              onAddToFavorites={handleAddToFavorites}
-              onFollowArtist={handleFollowArtist}
-            />
-          </div>
-        </div>
-      )}
+      {/* Full Screen Player */}
+      <FullScreenPlayer
+        track={currentTrack}
+        playlist={playlist}
+        isOpen={isPlayerOpen}
+        isMinimized={isPlayerMinimized}
+        onClose={handleClosePlayer}
+        onMinimize={handleMinimizePlayer}
+        onMaximize={handleMaximizePlayer}
+        onTrackChange={setCurrentTrack}
+        onAddToFavorites={handleAddToFavorites}
+        onFollowArtist={handleFollowArtist}
+      />
     </div>
   );
 };
