@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MusicPlayer } from '@/components/MusicPlayer';
-import { Sidebar } from '@/components/Sidebar';
+import { MobileDrawer } from '@/components/MobileDrawer';
 import { TrackCard } from '@/components/TrackCard';
 import { SearchBar } from '@/components/SearchBar';
 import { YouTubeService, YouTubeVideo } from '@/services/youtubeApi';
@@ -315,6 +315,183 @@ const Dashboard = () => {
     }
 
     switch (activeSection) {
+      case 'library':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-app-text-primary mb-4">
+              Minha Biblioteca
+            </h2>
+            
+            {/* Favorites */}
+            <div>
+              <h3 className="text-lg font-semibold text-app-text-primary mb-3">
+                Músicas Favoritas
+              </h3>
+              {favorites.length > 0 ? (
+                <div className="space-y-3">
+                  {favorites.map((track) => (
+                    <TrackCard
+                      key={track.id}
+                      track={track}
+                      isCurrentTrack={currentTrack?.id === track.id}
+                      isPlaying={isPlaying}
+                      onClick={() => handleTrackSelect(track)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-app-text-secondary">Nenhuma música favoritada ainda</p>
+              )}
+            </div>
+
+            {/* Followed Artists */}
+            <div>
+              <h3 className="text-lg font-semibold text-app-text-primary mb-3">
+                Artistas Seguidos
+              </h3>
+              {followedArtists.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {followedArtists.map((artist) => (
+                    <div key={artist.id} className="bg-app-surface rounded-lg p-4">
+                      <p className="text-app-text-primary font-medium truncate">
+                        {artist.name}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-app-text-secondary">Nenhum artista seguido ainda</p>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'history':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-app-text-primary">
+                Histórico
+              </h2>
+            </div>
+            
+            {history.length > 0 ? (
+              <div className="space-y-3">
+                {history.map((track) => (
+                  <TrackCard
+                    key={`${track.id}-${track.playedAt}`}
+                    track={track}
+                    isCurrentTrack={currentTrack?.id === track.id}
+                    isPlaying={isPlaying}
+                    onClick={() => handleTrackSelect(track)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-app-text-secondary">Nenhuma música no histórico</p>
+            )}
+          </div>
+        );
+
+      case 'profile':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-app-text-primary mb-4">
+              Perfil do Usuário
+            </h2>
+            <div className="bg-app-surface rounded-xl p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-full bg-app-accent/20 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-app-accent">
+                    {user?.email?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-app-text-primary">
+                    {user?.user_metadata?.full_name || 'Usuário'}
+                  </h3>
+                  <p className="text-app-text-secondary">{user?.email}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-app-accent">{favorites.length}</p>
+                  <p className="text-sm text-app-text-secondary">Favoritos</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-app-accent">{followedArtists.length}</p>
+                  <p className="text-sm text-app-text-secondary">Seguindo</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-app-accent">{history.length}</p>
+                  <p className="text-sm text-app-text-secondary">Histórico</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-app-text-primary mb-4">
+              Configurações
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-app-surface rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-app-text-primary mb-4">
+                  Aparência
+                </h3>
+                <p className="text-app-text-secondary">
+                  Personalizações de tema em breve...
+                </p>
+              </div>
+              <div className="bg-app-surface rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-app-text-primary mb-4">
+                  Áudio
+                </h3>
+                <p className="text-app-text-secondary">
+                  Configurações de som em breve...
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'upgrade':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-app-text-primary mb-4">
+              Planos Premium
+            </h2>
+            <div className="grid gap-4">
+              {[
+                { period: '1 mês', price: 'R$ 9,90', discount: '' },
+                { period: '3 meses', price: 'R$ 24,90', discount: '17% OFF' },
+                { period: '6 meses', price: 'R$ 44,90', discount: '25% OFF' },
+                { period: '1 ano', price: 'R$ 79,90', discount: '33% OFF' },
+              ].map((plan) => (
+                <div key={plan.period} className="bg-app-surface rounded-xl p-6 border border-app-surface-hover">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-app-text-primary">
+                        {plan.period}
+                      </h3>
+                      <p className="text-2xl font-bold text-app-accent">{plan.price}</p>
+                    </div>
+                    {plan.discount && (
+                      <span className="bg-app-accent/20 text-app-accent px-3 py-1 rounded-full text-sm font-medium">
+                        {plan.discount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'search':
       case 'search':
         return (
           <div className="space-y-6">
@@ -358,16 +535,7 @@ const Dashboard = () => {
               <SearchBar onSearch={handleSearch} />
             </div>
 
-            {/* Music Player - Only show if track is selected */}
-            {currentTrack && (
-              <MusicPlayer
-                track={currentTrack}
-                playlist={playlist}
-                onTrackChange={setCurrentTrack}
-                onAddToFavorites={handleAddToFavorites}
-                onFollowArtist={handleFollowArtist}
-              />
-            )}
+            {/* Music Player removed from here - now at bottom */}
 
             {/* Popular Tracks */}
             <div>
@@ -400,35 +568,45 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-app-background dark">
-      <div className="flex">
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={isSidebarOpen}
-          onToggle={toggleSidebar}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-          favorites={favorites}
-          followedArtists={followedArtists}
-          history={history}
-          onClearHistory={async () => {
-            if (user) {
-              await supabase
-                .from('listening_history')
-                .delete()
-                .eq('user_id', user.id);
-              setHistory([]);
-              toast({ title: "Histórico limpo" });
-            }
-          }}
-        />
+      {/* Mobile Drawer */}
+      <MobileDrawer
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        onClearHistory={async () => {
+          if (user) {
+            await supabase
+              .from('listening_history')
+              .delete()
+              .eq('user_id', user.id);
+            setHistory([]);
+            toast({ title: "Histórico limpo" });
+          }
+        }}
+      />
 
-        {/* Main Content */}
-        <main className="flex-1 p-6 md:p-8 ml-0 md:ml-0">
-          <div className="max-w-4xl mx-auto">
-            {renderContent()}
+      {/* Main Content - Mobile First */}
+      <main className="min-h-screen pt-16 px-4 pb-20">
+        <div className="max-w-md mx-auto">
+          {renderContent()}
+        </div>
+      </main>
+
+      {/* Bottom Player - Fixed at bottom on mobile */}
+      {currentTrack && (
+        <div className="fixed bottom-0 left-0 right-0 bg-app-surface/95 backdrop-blur-sm border-t border-app-surface-hover p-4">
+          <div className="max-w-md mx-auto">
+            <MusicPlayer
+              track={currentTrack}
+              playlist={playlist}
+              onTrackChange={setCurrentTrack}
+              onAddToFavorites={handleAddToFavorites}
+              onFollowArtist={handleFollowArtist}
+            />
           </div>
-        </main>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

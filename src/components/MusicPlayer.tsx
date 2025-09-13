@@ -5,6 +5,7 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Download } from 'lu
 import { useMediaSession } from '@/hooks/useMediaSession';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { VLCService } from '@/services/vlcService';
 
 declare global {
   interface Window {
@@ -47,6 +48,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
   
   const playerRef = useRef<any>(null);
+  const vlcService = VLCService.getInstance();
   const { toast } = useToast();
 
   const togglePlayPause = useCallback(() => {
@@ -110,45 +112,63 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     onTrackChange?.(playlist[previousIndex]);
   };
 
-  // Initialize YouTube Player
+  // Initialize Player (VLC with YouTube fallback)
   useEffect(() => {
-    if (track?.videoId && window.YT) {
-      if (playerRef.current) {
-        playerRef.current.loadVideoById(track.videoId);
-      } else {
-        playerRef.current = new window.YT.Player('youtube-player', {
-          height: '0',
-          width: '0',
-          videoId: track.videoId,
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            disablekb: 1,
-            enablejsapi: 1,
-            fs: 0,
-            iv_load_policy: 3,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0,
-            playsinline: 1 // Enable background playback on mobile
-          },
-          events: {
-            onReady: (event: any) => {
-              setDuration(event.target.getDuration());
+    const initializePlayer = async () => {
+      if (!track?.videoId) return;
+
+      // Try VLC first for better performance
+      const vlcAvailable = await vlcService.initialize();
+      
+      if (vlcAvailable && track.audioUrl) {
+        const success = await vlcService.playTrack(track.audioUrl);
+        if (success) {
+          setIsPlaying(true);
+          return;
+        }
+      }
+
+      // Fallback to YouTube player
+      if (window.YT) {
+        if (playerRef.current) {
+          playerRef.current.loadVideoById(track.videoId);
+        } else {
+          playerRef.current = new window.YT.Player('youtube-player', {
+            height: '0',
+            width: '0',
+            videoId: track.videoId,
+            playerVars: {
+              autoplay: 0,
+              controls: 0,
+              disablekb: 1,
+              enablejsapi: 1,
+              fs: 0,
+              iv_load_policy: 3,
+              modestbranding: 1,
+              rel: 0,
+              showinfo: 0,
+              playsinline: 1 // Enable background playback on mobile
             },
-            onStateChange: (event: any) => {
-              if (event.data === 1) { // Playing
-                setIsPlaying(true);
-              } else if (event.data === 2) { // Paused
-                setIsPlaying(false);
-              } else if (event.data === 0) { // Ended
-                playNext();
+            events: {
+              onReady: (event: any) => {
+                setDuration(event.target.getDuration());
+              },
+              onStateChange: (event: any) => {
+                if (event.data === 1) { // Playing
+                  setIsPlaying(true);
+                } else if (event.data === 2) { // Paused
+                  setIsPlaying(false);
+                } else if (event.data === 0) { // Ended
+                  playNext();
+                }
               }
             }
-          }
-        });
+          });
+        }
       }
-    }
+    };
+
+    initializePlayer();
   }, [track?.videoId]);
 
   // Update time while playing
@@ -229,25 +249,25 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   }
 
   return (
-    <div className="bg-gradient-surface rounded-2xl p-8 shadow-card max-w-md mx-auto">
+    <div className="bg-gradient-surface rounded-2xl p-6 shadow-card w-full max-w-sm mx-auto">
       {/* Album Art */}
-      <div className="relative mb-6">
+      <div className="relative mb-4">
         <img
           src={track.albumArt}
           alt={`${track.title} album art`}
-          className="w-full aspect-square rounded-2xl object-cover shadow-card"
+          className="w-full aspect-square rounded-xl object-cover shadow-card"
         />
-        <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
+        <div className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
           isPlaying ? 'bg-black/10' : 'bg-black/0'
         }`} />
       </div>
 
       {/* Track Info */}
-      <div className="text-center mb-6">
-        <h3 className="text-app-text-primary text-xl font-bold mb-1 truncate">
+      <div className="text-center mb-4">
+        <h3 className="text-app-text-primary text-lg font-bold mb-1 truncate">
           {track.title}
         </h3>
-        <p className="text-app-text-secondary text-lg truncate">
+        <p className="text-app-text-secondary text-sm truncate">
           {track.artist}
         </p>
       </div>
@@ -263,7 +283,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
             max={100}
             step={1}
             onValueChange={handleSeek}
-            className="flex-1"
+            className="flex-1 [&>.slider-track]:bg-progress-background [&>.slider-range]:bg-progress-fill"
           />
           <span className="text-sm text-app-text-muted min-w-[3rem] text-right">
             {formatTime(duration)}
