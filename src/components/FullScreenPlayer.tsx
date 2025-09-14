@@ -282,10 +282,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
   // Minimized player
   if (isMinimized) {
     return (
-      <div 
-        className="fixed bottom-0 left-0 right-0 bg-app-surface border-t border-app-surface-hover z-50 p-4 cursor-pointer"
-        onClick={onMaximize}
-      >
+      <div className="fixed bottom-0 left-0 right-0 bg-app-surface border-t border-app-surface-hover z-50 p-4">
         <div className="flex items-center gap-4">
           <img
             src={track.albumArt}
@@ -303,10 +300,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayPause();
-            }}
+            onClick={togglePlayPause}
             className="h-10 w-10 text-app-text-primary"
           >
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
@@ -314,10 +308,15 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
+            onClick={onMaximize}
+            className="h-10 w-10 text-app-text-secondary"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
             className="h-10 w-10 text-app-text-secondary"
           >
             <X className="h-5 w-5" />
@@ -329,7 +328,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
 
   // Full screen player
   return (
-    <div className="fixed inset-0 bg-app-background z-50 overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-background z-50 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-app-surface-hover">
         <Button
@@ -338,7 +337,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
           onClick={onMinimize}
           className="h-10 w-10 text-app-text-secondary"
         >
-          <Minimize2 className="h-6 w-6" />
+          <ChevronDown className="h-6 w-6" />
         </Button>
         <h1 className="text-lg font-semibold text-app-text-primary">
           Tocando Agora
