@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Shuffle, Repeat } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Heart, Download } from 'lucide-react';
 import { useMediaSession } from '@/hooks/useMediaSession';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { VLCService } from '@/services/vlcService';
-import { PlaylistManager } from '@/services/playlistManager';
-import { BackgroundPlaybackService } from '@/services/backgroundPlaybackService';
+import { ContinuousPlaybackService } from '@/services/continuousPlaybackService';
 
 declare global {
   interface Window {
@@ -49,21 +48,35 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [favorites, setFavorites] = useLocalStorage<Track[]>('playsong-favorites', []);
   const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
   
+  const playerRef = useRef<any>(null);
   const vlcService = VLCService.getInstance();
-  const playlistManager = PlaylistManager.getInstance();
-  const backgroundService = BackgroundPlaybackService.getInstance();
+  const continuousService = ContinuousPlaybackService.getInstance();
   const { toast } = useToast();
 
-  const togglePlayPause = useCallback(async () => {
-    if (vlcService.getIsPlaying()) {
-      vlcService.pause();
-    } else {
-      await vlcService.play();
+  const togglePlayPause = useCallback(() => {
+    if (playerRef.current && track?.videoId) {
+      const state = playerRef.current.getPlayerState();
+      if (state === 1) { // Playing
+        // In continuous mode, don't allow pausing
+        if (!continuousService.isActiveMode()) {
+          playerRef.current.pauseVideo();
+        } else {
+          toast({ title: "Modo contínuo ativo", description: "A música não pode ser pausada" });
+        }
+      } else {
+        playerRef.current.playVideo();
+        // Start continuous playback on first play
+        if (!continuousService.isActiveMode()) {
+          continuousService.start(playerRef.current, playNext);
+        }
+      }
     }
-  }, []);
+  }, [track?.videoId]);
 
   const seekTo = useCallback((time: number) => {
-    vlcService.seekTo(time);
+    if (playerRef.current) {
+      playerRef.current.seekTo(time, true);
+    }
   }, []);
 
   const addToFavorites = useCallback(() => {
@@ -94,101 +107,110 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     }
   }, [track, followedArtists, setFollowedArtists, toast, onFollowArtist]);
 
-  const playNext = useCallback(() => {
-    const nextTrack = playlistManager.playNext();
-    if (nextTrack) {
-      onTrackChange?.(nextTrack);
-    }
-  }, [onTrackChange]);
-
-  const playPrevious = useCallback(() => {
-    const previousTrack = playlistManager.playPrevious();
-    if (previousTrack) {
-      onTrackChange?.(previousTrack);
-    }
-  }, [onTrackChange]);
-
-  const toggleShuffle = useCallback(() => {
-    playlistManager.toggleShuffle();
-    toast({ 
-      title: playlistManager.getState().isShuffled ? "Modo aleatório ativado" : "Modo aleatório desativado" 
-    });
-  }, [toast]);
-
-  const toggleRepeat = useCallback(() => {
-    const state = playlistManager.getState();
-    const modes: Array<'none' | 'all' | 'one'> = ['none', 'all', 'one'];
-    const currentIndex = modes.indexOf(state.repeatMode);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    playlistManager.setRepeatMode(nextMode);
+  const playNext = () => {
+    if (!track || !playlist.length) return;
     
-    const modeNames = { none: 'desativado', all: 'repetir tudo', one: 'repetir música' };
-    toast({ title: `Modo repetição: ${modeNames[nextMode]}` });
-  }, [toast]);
+    const currentIndex = playlist.findIndex(t => t.id === track.id);
+    const nextIndex = (currentIndex + 1) % playlist.length;
+    onTrackChange?.(playlist[nextIndex]);
+  };
 
-  // Initialize VLC Service and setup playlist
+  const playPrevious = () => {
+    if (!track || !playlist.length) return;
+    
+    const currentIndex = playlist.findIndex(t => t.id === track.id);
+    const previousIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
+    onTrackChange?.(playlist[previousIndex]);
+  };
+
+  // Initialize Player (VLC with YouTube fallback)
   useEffect(() => {
-    const initializeServices = async () => {
-      await vlcService.initialize();
+    const initializePlayer = async () => {
+      if (!track?.videoId) return;
+
+      // Try VLC first for better performance
+      const vlcAvailable = await vlcService.initialize();
       
-      // Setup VLC event handlers
-      vlcService.onTimeUpdate(setCurrentTime);
-      vlcService.onDurationChange(setDuration);
-      vlcService.onPlay(() => setIsPlaying(true));
-      vlcService.onPause(() => setIsPlaying(false));
-      vlcService.onEnded(playNext);
-      
-      // Setup playlist
-      if (playlist.length > 0) {
-        const currentIndex = track ? playlist.findIndex(t => t.id === track.id) : 0;
-        playlistManager.setPlaylist(playlist, Math.max(0, currentIndex));
+      if (vlcAvailable && track.audioUrl) {
+        const success = await vlcService.playTrack(track.audioUrl);
+        if (success) {
+          setIsPlaying(true);
+          return;
+        }
       }
-    };
 
-    initializeServices();
-  }, [playlist]);
-
-  // Load and play track when it changes
-  useEffect(() => {
-    const loadTrack = async () => {
-      if (!track?.audioUrl && !track?.videoId) return;
-
-      const youtubeUrl = track.audioUrl || `https://www.youtube.com/watch?v=${track.videoId}`;
-      const loaded = await vlcService.loadTrack(youtubeUrl);
-      
-      if (loaded) {
-        // Auto-play the track
-        await vlcService.play();
-        
-        // Setup background playback
-        if ('mediaSession' in navigator) {
-          backgroundService.setupMediaSession(
-            new MediaMetadata({
-              title: track.title,
-              artist: track.artist,
-              artwork: [{ src: track.albumArt, sizes: '512x512', type: 'image/jpeg' }]
-            }),
-            {
-              onPlay: togglePlayPause,
-              onPause: togglePlayPause,
-              onPrevious: playPrevious,
-              onNext: playNext,
-              onSeek: (details: any) => seekTo(details.seekTime || 0)
+      // Fallback to YouTube player
+      if (window.YT) {
+        if (playerRef.current) {
+          playerRef.current.loadVideoById(track.videoId);
+        } else {
+          playerRef.current = new window.YT.Player('youtube-player', {
+            height: '0',
+            width: '0',
+            videoId: track.videoId,
+            playerVars: {
+              autoplay: 0,
+              controls: 0,
+              disablekb: 1,
+              enablejsapi: 1,
+              fs: 0,
+              iv_load_policy: 3,
+              modestbranding: 1,
+              rel: 0,
+              showinfo: 0,
+              playsinline: 1 // Enable background playback on mobile
+            },
+            events: {
+              onReady: (event: any) => {
+                setDuration(event.target.getDuration());
+              },
+              onStateChange: (event: any) => {
+                if (event.data === 1) { // Playing
+                  setIsPlaying(true);
+                  continuousService.updatePlayer(playerRef.current);
+                } else if (event.data === 2) { // Paused
+                  // In continuous mode, auto-resume after short delay
+                  if (continuousService.isActiveMode()) {
+                    setTimeout(() => {
+                      continuousService.forcePlay();
+                    }, 500);
+                  }
+                  setIsPlaying(false);
+                } else if (event.data === 0) { // Ended
+                  playNext();
+                }
+              }
             }
-          );
+          });
         }
       }
     };
 
-    if (track) {
-      loadTrack();
-    }
-  }, [track]);
+    initializePlayer();
+  }, [track?.videoId]);
 
-  // Handle volume changes
+  // Update time while playing
   useEffect(() => {
-    vlcService.setVolume(volume);
-  }, [volume]);
+    const updateTime = () => {
+      if (playerRef.current && isPlaying) {
+        try {
+          const current = playerRef.current.getCurrentTime();
+          const total = playerRef.current.getDuration();
+          setCurrentTime(current);
+          if (total !== duration) {
+            setDuration(total);
+          }
+        } catch (error) {
+          console.error('Error updating time:', error);
+        }
+      }
+    };
+
+    if (isPlaying) {
+      const interval = setInterval(updateTime, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isPlaying, duration]);
 
   // Media Session API for background playback controls
   useMediaSession(
@@ -211,11 +233,18 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     isPlaying
   );
 
-  // Cleanup on unmount
+  // Load YouTube API
   useEffect(() => {
-    return () => {
-      vlcService.destroy();
-    };
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      
+      (window as any).onYouTubeIframeAPIReady = () => {
+        console.log('YouTube API ready');
+      };
+    }
   }, []);
 
   const handleSeek = (value: number[]) => {
@@ -232,7 +261,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
   const isTrackFavorite = favorites.some(fav => fav.id === track?.id);
   const isArtistFollowed = followedArtists.some(artist => artist.id === track?.channelId);
-  const playlistState = playlistManager.getState();
 
   if (!track) {
     return null; // Don't render anything if no track is selected
@@ -286,15 +314,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleShuffle}
-          className={`h-8 w-8 ${playlistState.isShuffled ? 'text-app-accent' : 'text-app-text-secondary'} hover:text-app-text-primary`}
-        >
-          <Shuffle className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="icon"
           onClick={playPrevious}
           className="h-10 w-10 text-app-text-secondary hover:text-app-text-primary"
         >
@@ -317,18 +336,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
           className="h-10 w-10 text-app-text-secondary hover:text-app-text-primary"
         >
           <SkipForward className="h-5 w-5" />
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleRepeat}
-          className={`h-8 w-8 ${playlistState.repeatMode !== 'none' ? 'text-app-accent' : 'text-app-text-secondary'} hover:text-app-text-primary`}
-        >
-          <Repeat className="h-4 w-4" />
-          {playlistState.repeatMode === 'one' && (
-            <span className="absolute text-xs font-bold">1</span>
-          )}
         </Button>
       </div>
 
@@ -368,6 +375,10 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
         />
       </div>
 
+      {/* Hidden YouTube Player */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div id="youtube-player"></div>
+      </div>
     </div>
   );
 };

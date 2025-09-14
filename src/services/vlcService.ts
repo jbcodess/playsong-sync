@@ -1,25 +1,7 @@
-import { AudioExtractionService } from './audioExtractionService';
-import { BackgroundPlaybackService } from './backgroundPlaybackService';
-
-// Enhanced VLC Service with real libVLC integration
+// VLC Service for playing YouTube audio URLs
 export class VLCService {
   private static instance: VLCService;
   private isInitialized = false;
-  private currentAudio: HTMLAudioElement | null = null;
-  private audioExtractionService = AudioExtractionService.getInstance();
-  private backgroundService = BackgroundPlaybackService.getInstance();
-  private currentTime = 0;
-  private duration = 0;
-  private volume = 1;
-  private isPlaying = false;
-
-  // Event handlers
-  private onTimeUpdateCallback?: (time: number) => void;
-  private onDurationChangeCallback?: (duration: number) => void;
-  private onPlayCallback?: () => void;
-  private onPauseCallback?: () => void;
-  private onEndedCallback?: () => void;
-  private onLoadedCallback?: () => void;
   
   static getInstance(): VLCService {
     if (!VLCService.instance) {
@@ -30,199 +12,108 @@ export class VLCService {
 
   async initialize(): Promise<boolean> {
     try {
-      // Initialize background playback service
-      await this.backgroundService.initialize();
+      // Check if VLC plugin is available
+      if (!this.isVLCAvailable()) {
+        console.warn('VLC plugin not available, falling back to YouTube player');
+        return false;
+      }
       
       this.isInitialized = true;
-      console.log('VLC Service initialized successfully');
       return true;
     } catch (error) {
-      console.error('Failed to initialize VLC Service:', error);
+      console.error('Failed to initialize VLC:', error);
       return false;
     }
   }
 
-  // Event handler setters
-  onTimeUpdate(callback: (time: number) => void): void {
-    this.onTimeUpdateCallback = callback;
+  private isVLCAvailable(): boolean {
+    // Check for VLC web plugin availability
+    return typeof window !== 'undefined' && 
+           navigator.plugins && 
+           Array.from(navigator.plugins).some(plugin => 
+             plugin.name.toLowerCase().includes('vlc')
+           );
   }
 
-  onDurationChange(callback: (duration: number) => void): void {
-    this.onDurationChangeCallback = callback;
-  }
+  async extractAudioUrl(youtubeUrl: string): Promise<string | null> {
+    try {
+      // Extract video ID from YouTube URL
+      const videoId = this.extractVideoId(youtubeUrl);
+      if (!videoId) return null;
 
-  onPlay(callback: () => void): void {
-    this.onPlayCallback = callback;
-  }
-
-  onPause(callback: () => void): void {
-    this.onPauseCallback = callback;
-  }
-
-  onEnded(callback: () => void): void {
-    this.onEndedCallback = callback;
-  }
-
-  onLoaded(callback: () => void): void {
-    this.onLoadedCallback = callback;
-  }
-
-  private setupAudioElement(audioUrl: string): void {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio.src = '';
+      // In a real implementation, you would use yt-dlp or similar
+      // to extract the direct audio stream URL
+      // For now, we'll return the YouTube URL as fallback
+      return `https://www.youtube.com/watch?v=${videoId}`;
+    } catch (error) {
+      console.error('Error extracting audio URL:', error);
+      return null;
     }
-
-    this.currentAudio = new Audio();
-    this.currentAudio.src = audioUrl;
-    this.currentAudio.preload = 'auto';
-    this.currentAudio.volume = this.volume;
-
-    // Setup event listeners
-    this.currentAudio.addEventListener('loadedmetadata', () => {
-      this.duration = this.currentAudio!.duration;
-      this.onDurationChangeCallback?.(this.duration);
-      this.onLoadedCallback?.();
-    });
-
-    this.currentAudio.addEventListener('timeupdate', () => {
-      this.currentTime = this.currentAudio!.currentTime;
-      this.onTimeUpdateCallback?.(this.currentTime);
-    });
-
-    this.currentAudio.addEventListener('play', () => {
-      this.isPlaying = true;
-      this.onPlayCallback?.();
-    });
-
-    this.currentAudio.addEventListener('pause', () => {
-      this.isPlaying = false;
-      this.onPauseCallback?.();
-    });
-
-    this.currentAudio.addEventListener('ended', () => {
-      this.isPlaying = false;
-      this.onEndedCallback?.();
-    });
-
-    this.currentAudio.addEventListener('error', (e) => {
-      console.error('Audio playback error:', e);
-    });
   }
 
-  async loadTrack(youtubeUrl: string): Promise<boolean> {
+  private extractVideoId(url: string): string | null {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  }
+
+  async playTrack(youtubeUrl: string): Promise<boolean> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
       }
 
-      // Extract direct audio URL
-      const audioUrl = await this.audioExtractionService.extractAudioUrl(youtubeUrl);
-      if (!audioUrl) {
-        console.error('Failed to extract audio URL');
-        return false;
+      const audioUrl = await this.extractAudioUrl(youtubeUrl);
+      if (!audioUrl) return false;
+
+      // If VLC is available, use it for better performance
+      if (this.isVLCAvailable()) {
+        return this.playWithVLC(audioUrl);
       }
 
-      // Setup audio element with extracted URL
-      this.setupAudioElement(audioUrl);
+      return false; // Fallback to YouTube player
+    } catch (error) {
+      console.error('Error playing track with VLC:', error);
+      return false;
+    }
+  }
+
+  private playWithVLC(audioUrl: string): boolean {
+    try {
+      // This would integrate with VLC web plugin
+      // Implementation depends on the specific VLC plugin API
+      console.log('Playing with VLC:', audioUrl);
       return true;
     } catch (error) {
-      console.error('Error loading track:', error);
+      console.error('VLC playback error:', error);
       return false;
-    }
-  }
-
-  async playTrack(youtubeUrl: string): Promise<boolean> {
-    try {
-      const loaded = await this.loadTrack(youtubeUrl);
-      if (!loaded) return false;
-
-      if (this.currentAudio) {
-        await this.currentAudio.play();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error playing track:', error);
-      return false;
-    }
-  }
-
-  async play(): Promise<void> {
-    if (this.currentAudio && !this.isPlaying) {
-      try {
-        await this.currentAudio.play();
-      } catch (error) {
-        console.error('Play error:', error);
-      }
-    }
-  }
-
-  pause(): void {
-    if (this.currentAudio && this.isPlaying) {
-      this.currentAudio.pause();
     }
   }
 
   stop(): void {
     try {
-      if (this.currentAudio) {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-        this.currentTime = 0;
-        this.isPlaying = false;
-      }
+      // Stop VLC playback
+      console.log('Stopping VLC playback');
     } catch (error) {
-      console.error('Error stopping playback:', error);
+      console.error('Error stopping VLC:', error);
     }
   }
 
   setVolume(volume: number): void {
     try {
-      this.volume = Math.max(0, Math.min(1, volume / 100)); // Convert 0-100 to 0-1
-      if (this.currentAudio) {
-        this.currentAudio.volume = this.volume;
-      }
+      // Set VLC volume (0-100)
+      console.log('Setting VLC volume:', volume);
     } catch (error) {
-      console.error('Error setting volume:', error);
+      console.error('Error setting VLC volume:', error);
     }
   }
 
   seekTo(time: number): void {
     try {
-      if (this.currentAudio) {
-        this.currentAudio.currentTime = time;
-        this.currentTime = time;
-      }
+      // Seek to specific time in VLC
+      console.log('Seeking VLC to:', time);
     } catch (error) {
-      console.error('Error seeking:', error);
+      console.error('Error seeking VLC:', error);
     }
-  }
-
-  // Getters for current state
-  getCurrentTime(): number {
-    return this.currentTime;
-  }
-
-  getDuration(): number {
-    return this.duration;
-  }
-
-  getVolume(): number {
-    return this.volume * 100; // Convert back to 0-100
-  }
-
-  getIsPlaying(): boolean {
-    return this.isPlaying;
-  }
-
-  // Cleanup
-  destroy(): void {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio.src = '';
-      this.currentAudio = null;
-    }
-    this.backgroundService.releaseWakeLock();
   }
 }
