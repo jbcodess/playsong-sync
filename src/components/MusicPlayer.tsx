@@ -6,7 +6,6 @@ import { useMediaSession } from '@/hooks/useMediaSession';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { VLCService } from '@/services/vlcService';
-import { ContinuousPlaybackService } from '@/services/continuousPlaybackService';
 
 declare global {
   interface Window {
@@ -50,25 +49,15 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
   
   const playerRef = useRef<any>(null);
   const vlcService = VLCService.getInstance();
-  const continuousService = ContinuousPlaybackService.getInstance();
   const { toast } = useToast();
 
   const togglePlayPause = useCallback(() => {
     if (playerRef.current && track?.videoId) {
       const state = playerRef.current.getPlayerState();
       if (state === 1) { // Playing
-        // In continuous mode, don't allow pausing
-        if (!continuousService.isActiveMode()) {
-          playerRef.current.pauseVideo();
-        } else {
-          toast({ title: "Modo contínuo ativo", description: "A música não pode ser pausada" });
-        }
+        playerRef.current.pauseVideo();
       } else {
         playerRef.current.playVideo();
-        // Start continuous playback on first play
-        if (!continuousService.isActiveMode()) {
-          continuousService.start(playerRef.current, playNext);
-        }
       }
     }
   }, [track?.videoId]);
@@ -167,14 +156,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
               onStateChange: (event: any) => {
                 if (event.data === 1) { // Playing
                   setIsPlaying(true);
-                  continuousService.updatePlayer(playerRef.current);
                 } else if (event.data === 2) { // Paused
-                  // In continuous mode, auto-resume after short delay
-                  if (continuousService.isActiveMode()) {
-                    setTimeout(() => {
-                      continuousService.forcePlay();
-                    }, 500);
-                  }
                   setIsPlaying(false);
                 } else if (event.data === 0) { // Ended
                   playNext();

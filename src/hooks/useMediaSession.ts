@@ -44,11 +44,7 @@ export function useMediaSession(
 
       // Set action handlers
       navigator.mediaSession.setActionHandler('play', handlers.onPlay);
-      // Override pause to prevent stopping music in continuous mode
-      navigator.mediaSession.setActionHandler('pause', () => {
-        console.log('Media Session pause blocked - continuous mode');
-        // Don't call handlers.onPause to prevent pausing
-      });
+      navigator.mediaSession.setActionHandler('pause', handlers.onPause);
       navigator.mediaSession.setActionHandler('previoustrack', handlers.onPreviousTrack);
       navigator.mediaSession.setActionHandler('nexttrack', handlers.onNextTrack);
       
