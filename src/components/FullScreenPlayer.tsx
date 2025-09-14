@@ -11,12 +11,17 @@ import {
   ChevronDown,
   X,
   Minimize2,
-  ArrowUp
+  ArrowUp,
+  Shuffle,
+  Repeat,
+  List
 } from 'lucide-react';
 import { useMediaSession } from '@/hooks/useMediaSession';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { VLCService } from '@/services/vlcService';
+import { usePlaylistManager } from '@/hooks/usePlaylistManager';
+import { QueueManager } from './QueueManager';
 
 declare global {
   interface Window {
@@ -65,19 +70,40 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(100);
+  const [showQueue, setShowQueue] = useState(false);
   const [favorites, setFavorites] = useLocalStorage<Track[]>('playsong-favorites', []);
   const [followedArtists, setFollowedArtists] = useLocalStorage<Array<{id: string, name: string}>>('playsong-followed-artists', []);
   
-  const playerRef = useRef<any>(null);
   const vlcService = VLCService.getInstance();
+  const playlistManager = usePlaylistManager();
   const { toast } = useToast();
 
-  // Auto-play when track changes
+  // Initialize VLC and load track
   useEffect(() => {
-    if (track && isOpen && !isMinimized) {
-      initializePlayer(true);
+    const initializeVLC = async () => {
+      await vlcService.initialize();
+      vlcService.onTimeUpdate(setCurrentTime);
+      vlcService.onDurationChange(setDuration);
+      vlcService.onPlay(() => setIsPlaying(true));
+      vlcService.onPause(() => setIsPlaying(false));
+      vlcService.onEnded(() => {
+        const nextTrack = playlistManager.playNext();
+        if (nextTrack) onTrackChange?.(nextTrack);
+      });
+    };
+    
+    initializeVLC();
+  }, []);
+
+  useEffect(() => {
+    if (track && isOpen) {
+      const youtubeUrl = track.audioUrl || `https://www.youtube.com/watch?v=${track.videoId}`;
+      vlcService.loadTrack(youtubeUrl);
+      if (!isMinimized) {
+        vlcService.play();
+      }
     }
-  }, [track?.videoId, isOpen]);
+  }, [track, isOpen]);
 
   const initializePlayer = async (autoPlay = false) => {
     if (!track?.videoId) return;
@@ -93,69 +119,19 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
       }
     }
 
-    // Fallback to YouTube player
-    if (window.YT) {
-      if (playerRef.current) {
-        playerRef.current.loadVideoById(track.videoId);
-        if (autoPlay) {
-          setTimeout(() => {
-            playerRef.current.playVideo();
-          }, 1000);
-        }
-      } else {
-        playerRef.current = new window.YT.Player('youtube-player-fullscreen', {
-          height: '0',
-          width: '0',
-          videoId: track.videoId,
-          playerVars: {
-            autoplay: autoPlay ? 1 : 0,
-            controls: 0,
-            disablekb: 1,
-            enablejsapi: 1,
-            fs: 0,
-            iv_load_policy: 3,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0,
-            playsinline: 1
-          },
-          events: {
-            onReady: (event: any) => {
-              setDuration(event.target.getDuration());
-              if (autoPlay) {
-                event.target.playVideo();
-              }
-            },
-            onStateChange: (event: any) => {
-              if (event.data === 1) { // Playing
-                setIsPlaying(true);
-              } else if (event.data === 2) { // Paused
-                setIsPlaying(false);
-              } else if (event.data === 0) { // Ended
-                playNext();
-              }
-            }
-          }
-        });
-      }
-    }
+    // VLC fallback (already handled above)
   };
 
-  const togglePlayPause = useCallback(() => {
-    if (playerRef.current && track?.videoId) {
-      const state = playerRef.current.getPlayerState();
-      if (state === 1) { // Playing
-        playerRef.current.pauseVideo();
-      } else {
-        playerRef.current.playVideo();
-      }
+  const togglePlayPause = useCallback(async () => {
+    if (vlcService.getIsPlaying()) {
+      vlcService.pause();
+    } else {
+      await vlcService.play();
     }
-  }, [track?.videoId]);
+  }, []);
 
   const seekTo = useCallback((time: number) => {
-    if (playerRef.current) {
-      playerRef.current.seekTo(time, true);
-    }
+    vlcService.seekTo(time);
   }, []);
 
   const addToFavorites = useCallback(() => {
@@ -202,28 +178,10 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
     onTrackChange?.(playlist[previousIndex]);
   };
 
-  // Update time while playing
+  // Handle volume changes
   useEffect(() => {
-    const updateTime = () => {
-      if (playerRef.current && isPlaying) {
-        try {
-          const current = playerRef.current.getCurrentTime();
-          const total = playerRef.current.getDuration();
-          setCurrentTime(current);
-          if (total !== duration) {
-            setDuration(total);
-          }
-        } catch (error) {
-          console.error('Error updating time:', error);
-        }
-      }
-    };
-
-    if (isPlaying) {
-      const interval = setInterval(updateTime, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isPlaying, duration]);
+    vlcService.setVolume(volume);
+  }, [volume]);
 
   // Media Session API for background playback controls
   useMediaSession(

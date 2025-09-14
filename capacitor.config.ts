@@ -17,7 +17,25 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'DARK',
       backgroundColor: "#0a0a0a"
+    },
+    BackgroundMode: {
+      enabled: true,
+      title: 'PlaySong reproduzindo música',
+      text: 'Reprodução em segundo plano ativa',
+      icon: 'icon'
+    },
+    MediaSession: {
+      enabled: true
     }
+  },
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: true
+  },
+  ios: {
+    contentInset: 'automatic',
+    allowsLinkPreview: false
   }
 };
 
