@@ -104,8 +104,8 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
         }
       } else {
         playerRef.current = new window.YT.Player('youtube-player-fullscreen', {
-          height: '0',
-          width: '0',
+          height: '360',
+          width: '640',
           videoId: track.videoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
@@ -353,17 +353,25 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
         </Button>
       </div>
 
-      {/* Album Art Section */}
+      {/* Video Player Section */}
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="relative mb-8 w-full max-w-xs aspect-square">
-          <img
-            src={track.albumArt}
-            alt={`${track.title} album art`}
-            className="w-full h-full rounded-2xl object-cover shadow-2xl"
-          />
-          <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
-            isPlaying ? 'bg-black/10' : 'bg-black/0'
-          }`} />
+          {/* YouTube Player Container */}
+          <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl relative">
+            <div id="youtube-player-fullscreen" className="w-full h-full"></div>
+            
+            {/* Thumbnail Overlay */}
+            <div className="absolute inset-0 bg-black/20 rounded-2xl pointer-events-none">
+              <img
+                src={track.albumArt}
+                alt={`${track.title} thumbnail`}
+                className="w-full h-full object-cover rounded-2xl opacity-90"
+              />
+              <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
+                isPlaying ? 'bg-black/30' : 'bg-black/50'
+              }`} />
+            </div>
+          </div>
         </div>
 
         {/* Track Info */}
@@ -462,10 +470,6 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
         </div>
       </div>
 
-      {/* Hidden YouTube Player */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-        <div id="youtube-player-fullscreen"></div>
-      </div>
     </div>
   );
 };

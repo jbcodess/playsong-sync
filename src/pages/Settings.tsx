@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useTheme } from '@/hooks/useTheme';
 
 const SettingsPage = () => {
+  const { theme, setTheme, accentColor, setAccentColor } = useTheme();
+
   return (
     <div className="space-y-8">
       <div>
@@ -28,7 +31,7 @@ const SettingsPage = () => {
               <h3 className="text-app-text-primary font-semibold">Tema do Aplicativo</h3>
               <p className="text-app-text-secondary text-sm">Escolha entre tema claro ou escuro</p>
             </div>
-            <Select defaultValue="dark">
+            <Select value={theme} onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'auto')}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -46,10 +49,30 @@ const SettingsPage = () => {
               <p className="text-app-text-secondary text-sm">Personalize a cor principal do app</p>
             </div>
             <div className="flex gap-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-full cursor-pointer border-2 border-white"></div>
-              <div className="w-8 h-8 bg-purple-500 rounded-full cursor-pointer"></div>
-              <div className="w-8 h-8 bg-green-500 rounded-full cursor-pointer"></div>
-              <div className="w-8 h-8 bg-red-500 rounded-full cursor-pointer"></div>
+              <button
+                onClick={() => setAccentColor('blue')}
+                className={`w-8 h-8 bg-blue-500 rounded-full cursor-pointer transition-transform hover:scale-110 ${
+                  accentColor === 'blue' ? 'ring-2 ring-white ring-offset-2 ring-offset-app-surface' : ''
+                }`}
+              />
+              <button
+                onClick={() => setAccentColor('purple')}
+                className={`w-8 h-8 bg-purple-500 rounded-full cursor-pointer transition-transform hover:scale-110 ${
+                  accentColor === 'purple' ? 'ring-2 ring-white ring-offset-2 ring-offset-app-surface' : ''
+                }`}
+              />
+              <button
+                onClick={() => setAccentColor('green')}
+                className={`w-8 h-8 bg-green-500 rounded-full cursor-pointer transition-transform hover:scale-110 ${
+                  accentColor === 'green' ? 'ring-2 ring-white ring-offset-2 ring-offset-app-surface' : ''
+                }`}
+              />
+              <button
+                onClick={() => setAccentColor('red')}
+                className={`w-8 h-8 bg-red-500 rounded-full cursor-pointer transition-transform hover:scale-110 ${
+                  accentColor === 'red' ? 'ring-2 ring-white ring-offset-2 ring-offset-app-surface' : ''
+                }`}
+              />
             </div>
           </div>
         </div>

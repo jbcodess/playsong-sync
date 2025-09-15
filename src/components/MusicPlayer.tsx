@@ -112,30 +112,18 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
     onTrackChange?.(playlist[previousIndex]);
   };
 
-  // Initialize Player (VLC with YouTube fallback)
+  // Initialize YouTube Player
   useEffect(() => {
-    const initializePlayer = async () => {
+    const initializePlayer = () => {
       if (!track?.videoId) return;
 
-      // Try VLC first for better performance
-      const vlcAvailable = await vlcService.initialize();
-      
-      if (vlcAvailable && track.audioUrl) {
-        const success = await vlcService.playTrack(track.audioUrl);
-        if (success) {
-          setIsPlaying(true);
-          return;
-        }
-      }
-
-      // Fallback to YouTube player
       if (window.YT) {
         if (playerRef.current) {
           playerRef.current.loadVideoById(track.videoId);
         } else {
           playerRef.current = new window.YT.Player('youtube-player', {
-            height: '0',
-            width: '0',
+            height: '360',
+            width: '640',
             videoId: track.videoId,
             playerVars: {
               autoplay: 0,
@@ -147,7 +135,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
               modestbranding: 1,
               rel: 0,
               showinfo: 0,
-              playsinline: 1 // Enable background playback on mobile
+              playsinline: 1
             },
             events: {
               onReady: (event: any) => {
@@ -250,16 +238,24 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
   return (
     <div className="bg-gradient-surface rounded-2xl p-6 shadow-card w-full max-w-sm mx-auto">
-      {/* Album Art */}
+      {/* Video Player with Thumbnail Overlay */}
       <div className="relative mb-4">
-        <img
-          src={track.albumArt}
-          alt={`${track.title} album art`}
-          className="w-full aspect-square rounded-xl object-cover shadow-card"
-        />
-        <div className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-          isPlaying ? 'bg-black/10' : 'bg-black/0'
-        }`} />
+        {/* YouTube Player Container */}
+        <div className="w-full aspect-square rounded-xl overflow-hidden shadow-card relative">
+          <div id="youtube-player" className="w-full h-full"></div>
+          
+          {/* Thumbnail Overlay */}
+          <div className="absolute inset-0 bg-black/20 rounded-xl pointer-events-none">
+            <img
+              src={track.albumArt}
+              alt={`${track.title} thumbnail`}
+              className="w-full h-full object-cover rounded-xl opacity-90"
+            />
+            <div className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
+              isPlaying ? 'bg-black/30' : 'bg-black/50'
+            }`} />
+          </div>
+        </div>
       </div>
 
       {/* Track Info */}
@@ -357,10 +353,6 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
         />
       </div>
 
-      {/* Hidden YouTube Player */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-        <div id="youtube-player"></div>
-      </div>
     </div>
   );
 };
