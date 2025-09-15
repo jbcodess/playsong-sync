@@ -72,12 +72,19 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
   const vlcService = VLCService.getInstance();
   const { toast } = useToast();
 
-  // Auto-play when track changes
+  // Auto-play when track changes and handle minimized state
   useEffect(() => {
-    if (track && isOpen && !isMinimized) {
-      initializePlayer(true);
+    if (track && isOpen) {
+      if (!isMinimized) {
+        initializePlayer(true);
+      } else {
+        // When minimized, pause the video but keep audio playing
+        if (playerRef.current) {
+          playerRef.current.pauseVideo();
+        }
+      }
     }
-  }, [track?.videoId, isOpen]);
+  }, [track?.videoId, isOpen, isMinimized]);
 
   const initializePlayer = async (autoPlay = false) => {
     if (!track?.videoId) return;
@@ -93,22 +100,25 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
       }
     }
 
+    // Determine container ID based on minimized state
+    const containerId = isMinimized ? 'youtube-player-minimized' : 'youtube-player-fullscreen';
+
     // Fallback to YouTube player
     if (window.YT) {
       if (playerRef.current) {
         playerRef.current.loadVideoById(track.videoId);
-        if (autoPlay) {
+        if (autoPlay && !isMinimized) {
           setTimeout(() => {
             playerRef.current.playVideo();
           }, 1000);
         }
       } else {
-        playerRef.current = new window.YT.Player('youtube-player-fullscreen', {
-          height: '360',
-          width: '640',
+        playerRef.current = new window.YT.Player(containerId, {
+          height: isMinimized ? '1' : '360',
+          width: isMinimized ? '1' : '640', 
           videoId: track.videoId,
           playerVars: {
-            autoplay: autoPlay ? 1 : 0,
+            autoplay: autoPlay && !isMinimized ? 1 : 0,
             controls: 0,
             disablekb: 1,
             enablejsapi: 1,
@@ -122,7 +132,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
           events: {
             onReady: (event: any) => {
               setDuration(event.target.getDuration());
-              if (autoPlay) {
+              if (autoPlay && !isMinimized) {
                 event.target.playVideo();
               }
             },
@@ -305,7 +315,15 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
             size="icon"
             onClick={(e) => {
               e.stopPropagation();
-              togglePlayPause();
+              // Resume video when play is clicked in minimized state
+              if (playerRef.current) {
+                const state = playerRef.current.getPlayerState();
+                if (state === 2) { // Paused
+                  playerRef.current.playVideo();
+                } else if (state === 1) { // Playing
+                  playerRef.current.pauseVideo();
+                }
+              }
             }}
             className="h-10 w-10 text-app-text-primary"
           >
@@ -322,6 +340,11 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
           >
             <X className="h-5 w-5" />
           </Button>
+        </div>
+        
+        {/* Hidden minimized player container */}
+        <div className="absolute top-[-9999px] left-[-9999px] w-0 h-0 overflow-hidden">
+          <div id="youtube-player-minimized" className="w-1 h-1"></div>
         </div>
       </div>
     );
