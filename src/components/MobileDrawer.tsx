@@ -4,7 +4,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Home, Search, Library, Clock, User, Settings, Crown, Menu, X, Palette, Volume2, Bell, Shield, HelpCircle } from 'lucide-react';
+import { Home, Search, Library, Clock, User, Settings, Crown, Menu, X, Palette, Volume2, Bell, Shield, HelpCircle, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
     { id: 'settings', label: 'Configurações', icon: Settings },
     { id: 'upgrade', label: 'Upgrade', icon: Crown },
   ];
+
+  const { signOut } = useAuth();
 
   const [showSettings, setShowSettings] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -126,11 +129,24 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
                     >
                       <Icon className="h-5 w-5" />
                       <span className="font-medium">{item.label}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
+                     </Button>
+                   );
+                 })}
+                 
+                 {/* Logout Button */}
+                 <Button
+                   variant="ghost"
+                   className="w-full justify-start gap-3 h-12 px-4 rounded-xl transition-all text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                   onClick={() => {
+                     signOut();
+                     onToggle();
+                   }}
+                 >
+                   <LogOut className="h-5 w-5" />
+                   <span className="font-medium">Sair</span>
+                 </Button>
+               </div>
+             </div>
 
             {/* Clear History Button (only show in history section) */}
             {activeSection === 'history' && (
